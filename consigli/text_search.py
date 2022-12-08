@@ -1,52 +1,57 @@
 import pandas as pd
 from loguru import logger
-from modules.textsearch import textsearch
+import matplotlib
 
-
-def replace_newlines(obj):
-    if isinstance(obj, list):
-        return[" ".join(item.split())for item in obj]
-
-
-def read_data(url: str)->pd.DataFrame:
-    return pd.read_json(url).head(5)
+from consigli.modules.data_prep_processing import replace_newlines
+from consigli.modules.keywords_stopwords import MAITENANCE_KEYWORDS
+from operator import itemgetter
 
 
 def get_list_content(content: pd.DataFrame)->list:
+    """
+
+    :param content:
+    :return:
+    """
     contents = list(content.values.tolist())
     return [replace_newlines(list(map(str, l))) for l in contents]
 
 
-df = read_data('/Users/hamzaharunamohammed/Desktop/Etiya/others/poc_pojects/consigli/dataset/data.json')
+def check(sentences, words):
+    """
 
-contents = get_list_content(df)
-
-# t = textsearch(contents, histogram=False)
-
-
-import sys
-sys.dont_write_bytecode = True
-import os
-import ast
-import json
+    :param sentences:
+    :param words:
+    :return:
+    """
+    res = list(map(lambda x: all(map(lambda y: y.lower() in x.lower().split(),
+                                     words)), sentences))
+    return [sentences[i] for i in range(0, len(res)) if res[i]]
 
 
-# loads
-def load_test():
-    y = []
-    for a in open('//consigli/dataset/test_data.txt', 'rb'):
-        y.append(a)
-    y = y[0]
-    return ast.literal_eval(y)
+def search_builder(contents, words):
+    """
+
+    :param contents:
+    :param words:
+    :return:
+    """
+    return [check(list(map(itemgetter(2), contents)), [w, words[1]]) for w in MAITENANCE_KEYWORDS] \
+        if words[0].casefold().__eq__('vedlikehold'.casefold()) \
+        else check(list(map(itemgetter(2), contents)), words)
 
 
-# tests
-def test_search():
-    test_data = load_test()
-    t = textsearch(test_data, True)
-    return t
+def text_search(contents, words):
+    """
 
+    :param contents:
+    :param words:
+    :return:
+    """
+    sentences = list(matplotlib.cbook.flatten(
+        search_builder(contents=contents, words=words)))
 
-t = test_search()
+    logger.info(f"Total number of sentences that discuss {words[0]} and {words[1]} are: {len(sentences)} \n")
 
-logger.info('The data...'.format(df))
+    for i in range(0, len(sentences)):
+        logger.info(f"{i+1}:{sentences[i]} \n")
